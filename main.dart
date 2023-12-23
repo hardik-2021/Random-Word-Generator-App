@@ -1,10 +1,10 @@
-import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
+import 'package:english_words/english_words.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_application_2/navbar.dart';
+//import 'package:gap/gap.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -15,10 +15,11 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (context) => MyAppState(),
       child: MaterialApp(
-        title: 'Words Generator',
+        title: 'Flutter Demo',
         theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+              seedColor: Color.fromARGB(15, 241, 181, 102)),
           useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
         ),
         home: MyHomePage(),
       ),
@@ -28,109 +29,294 @@ class MyApp extends StatelessWidget {
 
 class MyAppState extends ChangeNotifier {
   var current = WordPair.random();
+  var navigation = false;
 
   void getNext() {
     current = WordPair.random();
     notifyListeners();
   }
+
+  var favorites = <WordPair>[];
+
+  void toggleFavorite() {
+    if (favorites.contains(current)) {
+      favorites.remove(current);
+    } else {
+      favorites.add(current);
+    }
+    notifyListeners();
+  }
+
+  void removeFavourite(WordPair item) {
+    favorites.remove(item);
+    notifyListeners();
+  }
+
+  void toggleNavigation() {
+    if (navigation == false) {
+      navigation = true;
+    } else {
+      navigation = false;
+    }
+    notifyListeners();
+  }
 }
 
-class MyHomePage extends StatelessWidget {
+class MyHomePage extends StatefulWidget {
+  @override
+  State<MyHomePage> createState() => MyHomePageState();
+}
+
+class MyHomePageState extends State<MyHomePage> {
+  var selectedIndex = 0;
+
   @override
   Widget build(BuildContext context) {
-    var appState = context.watch<MyAppState>();
+    Widget page;
+    switch (selectedIndex) {
+      case 0:
+        page = GeneratorPage();
+      case 1:
+        page = Placeholder();
+      case 2:
+        page = ProfilePage();
+      default:
+        throw UnimplementedError('no widget for $selectedIndex');
+    }
 
-    return Scaffold(
-      drawer: Sidebar(),
-      appBar: AppBar(
-          title: Text(
-            'Word Generator',
-            style: TextStyle(),
-          ),
-          centerTitle: true,
-          backgroundColor: Color.fromARGB(255, 50, 167, 240)),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    return LayoutBuilder(builder: (context, constraints) {
+      return Scaffold(
+        body: Row(
           children: [
-            Container(
-              margin: EdgeInsets.fromLTRB(0, 0, 0, 15.0),
-              padding: EdgeInsets.all(10.0),
-              color: Colors.amber,
-              child: Text(
-                appState.current.asUpperCase,
-                style: TextStyle(
-                  fontSize: 20.0,
-                ),
+            SafeArea(
+              child: NavigationRail(
+                extended: context.watch<MyAppState>().navigation,
+                destinations: [
+                  NavigationRailDestination(
+                    icon: Icon(Icons.home),
+                    label: Text('Home'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.favorite),
+                    label: Text('Favorites'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.person),
+                    label: Text('Profile'),
+                  ),
+                ],
+                selectedIndex: selectedIndex,
+                onDestinationSelected: (value) {
+                  setState(() {
+                    selectedIndex = value;
+                  });
+                },
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Icon(Icons.favorite);
-                  },
-                  icon: Icon(Icons.favorite_border),
-                  label: Text('Like'),
-                ),
-                SizedBox(
-                  width: 10.0,
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    appState.getNext();
-                  },
-                  child: Text('Next'),
-                ),
-              ],
+            Expanded(
+              child: Container(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                child: page,
+              ),
             ),
           ],
         ),
+        floatingActionButton: Align(
+          alignment: Alignment.bottomLeft,
+          child: Padding(
+            padding: const EdgeInsets.all(25.0),
+            child: FloatingActionButton(
+              onPressed: () {
+                context.read<MyAppState>().toggleNavigation();
+              },
+              child: Icon(Icons.menu),
+            ),
+          ),
+        ),
+      );
+    });
+  }
+}
+
+class GeneratorPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    var appState = context.watch<MyAppState>();
+    var pair = appState.current;
+
+    IconData icon;
+    if (appState.favorites.contains(pair)) {
+      icon = Icons.favorite;
+    } else {
+      icon = Icons.favorite_border;
+    }
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          BigCard(pair: pair),
+          // SizedBox(height: 10),
+          // Gap(10),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  appState.toggleFavorite();
+                },
+                icon: Icon(icon),
+                label: Text('Like'),
+              ),
+              // SizedBox(width: 10),
+              // Gap(10),
+              ElevatedButton(
+                onPressed: () {
+                  appState.getNext();
+                },
+                child: Text('Next'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-class profile extends StatelessWidget {
+class Placeholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Your Profile'),
-        backgroundColor: Color.fromARGB(255, 50, 167, 240),
-      ),
-      body: Column(
-        children: [
-          SizedBox(
-            height: 20.0,
-          ),
-          Center(
-            child: CircleAvatar(
-              radius: 80.0,
-              backgroundImage: AssetImage("avatar_1.png"),
+    var appState = context.watch<MyAppState>();
+    var favorites = appState.favorites;
+
+    if (favorites.isEmpty) {
+      return Center(
+        child: Text('No favorites yet'),
+      );
+    }
+
+    return ListView(
+      children: [
+        Text('You have ${favorites.length} favourites.'),
+        // Gap(5),
+        for (var pair in favorites)
+          ListTile(
+            leading: Icon(Icons.favorite),
+            title: Text(pair.asPascalCase),
+            trailing: IconButton(
+              icon: Icon(Icons.delete),
+              onPressed: () {
+                appState.removeFavourite(pair); //removes the favourite
+              },
             ),
           ),
-          SizedBox(
-            height: 10.0,
+      ],
+    );
+  }
+}
+
+class ProfilePage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircleAvatar(
+            radius: 50,
+            backgroundImage: NetworkImage(
+                'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTHE4vcD6O1-GAxEU2CDLEQlD140pQI94q5qA&usqp=CAU'),
           ),
+          SizedBox(height: 20.0),
           Text(
             'Hardik Gupta',
-            style: TextStyle(fontSize: 25.0),
+            style: TextStyle(
+              fontSize: 40.0,
+            ),
           ),
-          TextButton.icon(
-              onPressed: () {},
-              icon: Icon(Icons.mail),
-              label: Text('hardikgpt2021@gmail.com')),
-          TextButton.icon(
-              onPressed: () {},
-              icon: Icon(Icons.location_on),
-              label: Text('Kanpur,India')),
-          TextButton.icon(
-              onPressed: () {},
-              icon: Icon(Icons.work),
-              label: Text('Roll_no: 220419')),
+          Text(
+            'hardikg22@iitk.ac.in',
+            style: TextStyle(
+              fontSize: 20.0,
+            ),
+          ),
+          // Gap(10),
+          Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.location_on, color: Colors.black),
+                  SizedBox(width: 5.0),
+                  Text(
+                    'City: ',
+                    style: TextStyle(
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Varanasi, U.P',
+                    style: TextStyle(
+                      fontSize: 17.0,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  //static const IconData school = IconData(0xe559, fontFamily: 'MaterialIcons');
+                  Icon(Icons.school, color: Colors.black),
+                  SizedBox(width: 5.0),
+                  Text(
+                    'Roll no: ',
+                    style: TextStyle(
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '220419',
+                    style: TextStyle(
+                      fontSize: 17.0,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class BigCard extends StatelessWidget {
+  const BigCard({
+    super.key,
+    required this.pair,
+  });
+
+  final WordPair pair;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.displayMedium!.copyWith(
+      color: theme.colorScheme.onPrimary,
+    );
+
+    return Card(
+      color: theme.colorScheme.primary,
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Text(
+          pair.asPascalCase,
+          style: style,
+          semanticsLabel: "${pair.first} ${pair.second}",
+        ),
       ),
     );
   }
